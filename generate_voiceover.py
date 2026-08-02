@@ -1,4 +1,4 @@
-"""
+VOICE_NAME = "Iapetus"         # tagged "Clear" by Google - crisp, articulate tone            # firm, clear, masculine documentary/narrator tone"""
 Generates the full documentary narration using Gemini's TTS API, reading
 the ENTIRE script.txt in a small number of large chunks (not one call per
 scene). This works within Gemini's per-call limits - roughly 8,000 input
