@@ -11,6 +11,9 @@ on:
       - "fetch_music.py"
   workflow_dispatch: {}
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -57,9 +60,6 @@ jobs:
           timeout_minutes: 60
           max_attempts: 3
           command: python Build_video.py
-        env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
 
       - name: Post-process video (fades + YouTube re-encode)
         uses: nick-fields/retry@v3
@@ -68,9 +68,21 @@ jobs:
           max_attempts: 3
           command: python postprocess_video.py
 
-      - name: Upload finished video
-        uses: actions/upload-artifact@v4
-        with:
-          name: final-video
-          path: final_video_youtube.mp4
-          retention-days: 7
+      - name: Create GitHub Release with video
+        id: release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="video-$(date +%Y%m%d-%H%M%S)"
+          gh release create "$TAG" final_video_youtube.mp4 \
+            --title "Generated video - $TAG" \
+            --notes "Automatically generated video."
+          URL=$(gh release view "$TAG" --json assets -q '.assets[0].url')
+          echo "download_url=$URL" >> "$GITHUB_OUTPUT"
+
+      - name: Notify Telegram
+        run: python notify_telegram.py
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          DOWNLOAD_URL: ${{ steps.release.outputs.download_url }}
