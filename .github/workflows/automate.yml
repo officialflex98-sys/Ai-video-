@@ -31,7 +31,7 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Clean up stale run artifacts
-        run: rm -rf voiceover_segments clips scene_renders final_video.mp4 final_video_youtube.mp4 voiceover.wav music.mp3
+        run: rm -rf voiceover_segments clips scene_renders scene_images final_video.mp4 final_video_youtube.mp4 voiceover.wav music.mp3
 
       - name: Generate voiceover
         uses: nick-fields/retry@v3
@@ -58,7 +58,6 @@ jobs:
           max_attempts: 3
           command: python Build_video.py
         env:
-          PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
 
