@@ -1,0 +1,77 @@
+name: Build Video
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "script.txt"
+      - "Build_video.py"
+      - "generate_voiceover.py"
+      - "postprocess_video.py"
+      - "fetch_music.py"
+  workflow_dispatch: {}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install ffmpeg (required by moviepy)
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+
+      - name: Install Python dependencies
+        run: pip install -r requirements.txt
+
+      - name: Clean up stale run artifacts
+        run: rm -rf voiceover_segments clips scene_renders final_video.mp4 final_video_youtube.mp4 voiceover.wav music.mp3
+
+      - name: Generate voiceover
+        uses: nick-fields/retry@v3
+        with:
+          timeout_minutes: 45
+          max_attempts: 3
+          command: python generate_voiceover.py
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+
+      - name: Fetch background music
+        uses: nick-fields/retry@v3
+        with:
+          timeout_minutes: 45
+          max_attempts: 3
+          command: python fetch_music.py
+        env:
+          JAMENDO_CLIENT_ID: ${{ secrets.JAMENDO_CLIENT_ID }}
+
+      - name: Run video builder
+        uses: nick-fields/retry@v3
+        with:
+          timeout_minutes: 60
+          max_attempts: 3
+          command: python Build_video.py
+        env:
+          PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+
+      - name: Post-process video (fades + YouTube re-encode)
+        uses: nick-fields/retry@v3
+        with:
+          timeout_minutes: 45
+          max_attempts: 3
+          command: python postprocess_video.py
+
+      - name: Upload finished video
+        uses: actions/upload-artifact@v4
+        with:
+          name: final-video
+          path: final_video_youtube.mp4
+          retention-days: 7
